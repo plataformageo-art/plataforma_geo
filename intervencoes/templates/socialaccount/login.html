@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Login Social - Plataforma Geo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow-lg border-0 rounded-4">
+      <div class="card-body p-4 text-center">
+        <h2 class="mb-4">🔗 Entrar com Google</h2>
+
+        <p class="mb-3">
+          Você está prestes a entrar usando sua conta do <strong>Google</strong>.
+        </p>
+
+        <form method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-lg w-100">
+            Continuar com Google
+          </button>
+        </form>
+
+        <div class="mt-3">
+          <a href="/" class="btn btn-outline-secondary w-100">
+            Cancelar
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

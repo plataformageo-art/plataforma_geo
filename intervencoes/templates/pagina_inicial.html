@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Plataforma Geo - Intervenções</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<style>
+body { font-family: sans-serif; background: #f8fafc; padding: 2rem; margin:0; }
+nav { background-color: #1d4ed8; padding: 10px; color: white; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 2rem;flex-wrap: wrap; }
+nav a { color: green; text-decoration: none; }
+nav .caixinha { display: flex; justify-content: center; align-items: center; padding: 8px; border: 3px solid #000; border-radius: 8px; background-color: #fff; font-weight: bold; cursor: pointer; }
+h1 { text-align: center; margin-bottom: 1rem; }
+#status-message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 1rem 2rem; border-radius: 8px; display: none; font-weight: bold; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+#tutorial, #categorias-tutorial {
+    background: #ffffff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    flex: 1; /* ocupa espaço igual */
+    min-width: 300px; /* para responsividade */
+    margin-bottom: 2rem;
+}
+#tutorial ul, #categorias-tutorial ul {
+    text-align: left;
+    max-width: 600px;
+    margin: 0;
+    padding-left: 1.2rem;
+}
+
+#top-container {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+#bottom-container {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+#content-wrapper { display: flex; gap: 1rem; margin-bottom: 2rem; }
+#side-menu { width: 250px; background:white; border-radius:10px; padding:1.5rem; box-shadow:0 2px 8px rgba(0,0,0,0.1);flex-shrink: 0; margin-bottom: 2rem; }
+
+#main-content {
+    display: flex;
+    gap: 3rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap; /* permite quebra em telas menores */
+}
+#left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    flex: 1 1 20%;
+    min-width: 250px;
+}
+#formulario {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+#lista-intervencoes {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#map {
+    flex: 4 1 75%;
+    min-width: 300px;
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+input, textarea, button, select { width: 100%; margin-top: 0.5rem; margin-bottom: 1rem; padding: 0.6rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; }
+button { background: #2563eb; color: white; border: none; cursor: pointer; }
+button:hover { background: #1d4ed8; }
+.card { padding: 1rem; border-bottom: 1px solid #e5e7eb; }
+.intervencao-img { max-width: 120px; max-height: 120px; margin-top: 0.5rem; border-radius: 8px; cursor: zoom-in; object-fit: contain; }
+#lightbox { display: none; position: fixed; z-index: 99999; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
+#lightbox img { max-width: 90%; max-height: 90%; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+.legend, .filter-box { background: white; padding: 10px; border-radius: 8px; line-height: 18px; color: #333; }
+.legend img { vertical-align: middle; margin-right: 6px; }
+.filter-box label { display: block; margin-bottom: 4px; }
+
+/* Responsividade */
+@media (max-width: 600px) {body { padding: 0.5rem; overflow-x: hidden;} /* evita scroll lateral */
+    #top-container, #main-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    #left-column, #map, #side-menu, #tutorial, #categorias-tutorial {
+        min-width: auto;  /* remove largura mínima fixa */
+        width:100%;      /* ocupa 100% do espaço disponível */
+    }
+
+    nav {
+        flex-direction: column;       /* empilha itens verticalmente */
+        align-items: stretch;      /* alinha à esquerda */
+        gap: 0.5rem;                  /* espaçamento entre itens */
+        padding: 1rem;
+    }
+
+    nav .links, nav .caixinha {
+        width: 100%;
+        text-align: center;
+        padding:8px;
+    }
+
+    nav .links a {
+        padding: 0.5rem;
+    }
+        #formulario input, #formulario textarea, #formulario select, #formulario button {
+        width: 100%;  /* garante que não quebre layout */
+        box-sizing: border-box;
+    }
+
+    #lista-intervencoes {
+        width: 100%;
+    }
+
+#map {
+    width: 100%;
+    height: 90vh;   /* ocupa quase toda a altura da tela */
+    min-height: 500px; /* garante bom tamanho mesmo em telas pequenas */
+    padding: 0;
+    margin: 0 auto;
+}
+
+#toggle-legend, #toggle-filter {
+    position: absolute;
+    z-index: 1000;
+    background: #ffffff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* Posição dos botões */
+#toggle-legend {
+    bottom: 20px;
+    left: 20px;
+}
+#toggle-filter {
+    bottom: 20px;
+    right: 20px;
+}
+
+/* Caixinhas recolhíveis */
+#legend-box, #filter-box {
+    display: none;
+    position: absolute;
+    bottom: 60px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 8px;
+    width: 160px;
+    z-index: 1000;
+    font-size: 0.8rem;
+}
+
+/* Diferenciar posição para não sobrepor */
+#legend-box {
+    left: 20px;
+}
+#filter-box {
+    right: 20px;
+}
+
+    .intervencao-img {
+        max-width: 100%;  /* evita quebrar layout */
+        height: auto;
+    }
+
+      #toggle-legend, #toggle-filter {
+    font-size: 0.7rem;
+    padding: 4px 6px;
+  }
+
+  /* Caixas menores */
+  .legend, .filter-box {
+    width: 120px !important;   /* força redução */
+    font-size: 0.7rem !important;
+    padding: 6px !important;
+  }
+
+  .legend img {
+    width: 14px !important;
+    height: 20px !important;
+  }
+
+  .filter-box h4 {
+    font-size: 0.75rem !important;
+    margin-bottom: 4px !important;
+  }
+}
+
+
+</style>
+</head>
+<body>
+
+<nav>
+  <div style="font-weight:bold; font-size:1.2rem;">🗺️ Plataforma Geo</div>
+  <div style="display:flex; gap:1rem;">
+    <a href="/"><div class="caixinha">🏠 Início</div></a>
+    <a href="login"><div class="caixinha">🔐 Login</div></a>
+    <a href="cadastro"><div class="caixinha">📝 Cadastro</div></a>
+    <a href="/accounts/google/login/"><div class="caixinha">🔗 Entrar com Google</div></a>
+    {% if user.is_authenticated %}
+      <p> Olá, {{ user.username }}! 
+      <form action="{% url 'logout' %}" method="post" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="caixinha" style="color:red;border-color:red;background-color:#fff;">Sair</button>
+      </form>
+    {% endif %}
+  </div>
+</nav>
+
+<h1>🗺️ Plataforma de Intervenções</h1>
+<div id="status-message"></div>
+
+<div id="top-container" style="display:flex; gap:1rem; flex-wrap: wrap;">
+    <div id="side-menu">
+    <h3>📂 Menu</h3>
+    <ul style="list-style:none; padding:0;">
+      <li style="margin-bottom:0.5rem;"><a href="/analise_dados/" style="text-decoration:none; color:#2563eb; font-weight:bold;">📊 Análise dos Dados</a></li>
+      <li><a href="/projeto/" style="text-decoration:none; color:#2563eb; font-weight:bold;">ℹ️ Sobre o Projeto</a></li>
+    </ul>
+  </div>
+
+  <div id="tutorial">
+    <h2>📖 Tutorial de Cadastro de Intervenções</h2>
+    <p>Bem-vindo à plataforma! Aqui você pode registrar intervenções na sua cidade. Para isso:</p>
+    <ul>
+      <li>Primeiramente, <strong>faça o cadastro</strong> em nossa página.</li>
+      <li>Caso já tenha o cadastro, <strong>faça o login</strong>, se ainda não estiver logado.</li>
+      <li>Escolha a <strong>categoria</strong> da intervenção.</li>
+      <li>Descreva a intervenção no campo <strong>Descrição</strong>.</li>
+      <li>Informe a <strong>localização</strong> clicando no mapa ou digitando latitude e longitude.</li>
+      <li>Caso a localização não esteja sinalizando o local correto, utilize o 
+      <a href="https://sigam.ambiente.sp.gov.br/sigam3/Controles/latlongutm.htm?latTxt=ctl00_con" target="_blank">
+      site de conversão SIGAM </a>.</li>
+      <li>Adicione uma <strong>imagem</strong> para melhor visualização.</li>
+      <li>Clique em <strong>Enviar Intervenção</strong> para registrar.</li>
+    </ul>
+    <p>Após cadastrar, sua intervenção aparecerá na lista à esquerda e no mapa à direita.</p>
+  </div>
+
+  <div id="categorias-tutorial">
+    <h2>📂 Guia de Categorias de Intervenção</h2>
+    <p>Para facilitar o registro, veja abaixo uma explicação rápida de cada categoria:</p>
+    <ul>
+      <li><strong>MOBILIÁRIO URBANO:</strong> Elementos como bancos, lixeiras, postes de iluminação e sinalização nas ruas e praças.</li>
+      <li><strong>ESPAÇOS LIVRES DE ESTAR:</strong> Áreas abertas para lazer e descanso, como praças, jardins e parques.</li>
+      <li><strong>FESTAS E EVENTOS:</strong> Atividades temporárias na cidade, como feiras, shows, festivais e celebrações públicas.</li>
+      <li><strong>PAISAGISMO:</strong> Árvores, flores, canteiros e outras formas de vegetação planejada para embelezar a cidade.</li>
+      <li><strong>FINALIDADE COMERCIAL:</strong> Intervenções ligadas a comércios, como lojas, quiosques, mercados ou anúncios em áreas públicas.</li>
+      <li><strong>INFRAESTRUTURA URBANA:</strong> Estruturas e serviços essenciais, como calçadas, ruas, pontes, redes de água, esgoto e iluminação pública.</li>
+    </ul>
+  </div>
+</div>
+
+<div id="main-content">
+  <div id="left-column">
+    {% if user.is_authenticated %}
+    <form id="formulario" enctype="multipart/form-data">
+      {% csrf_token %}
+      <h2>Registrar nova intervenção</h2>
+      <label for="categoria">Categoria da Intervenção</label>
+      <select id="categoria" name="categoria" required>
+        <option value="">-- Selecione uma categoria --</option>
+        <option value="MOBILIÁRIO URBANO">MOBILIÁRIO URBANO</option>
+        <option value="ESPAÇOS LIVRES DE ESTAR">ESPAÇOS LIVRES DE ESTAR</option>
+        <option value="FESTAS E EVENTOS">FESTAS E EVENTOS</option>
+        <option value="PAISAGISMO">PAISAGISMO</option>
+        <option value="FINALIDADE COMERCIAL">FINALIDADE COMERCIAL</option>
+        <option value="INFRAESTRUTURA URBANA">INFRAESTRUTURA URBANA</option>
+      </select>
+      <label for="descricao">Descrição</label>
+      <textarea id="descricao" name="descricao" required></textarea>
+      <label for="latitude">Latitude:</label>
+      <input type="text" id="latitude" name="latitude" placeholder="Ex: -20.7552 ou 20°45'18&quot;S" required>
+      <label for="longitude">Longitude:</label>
+      <input type="text" id="longitude" name="longitude" placeholder="Ex: -42.8820 ou 42°52'55&quot;W" required>
+      <label for="imagem">Imagem da intervenção</label>
+      <input type="file" id="imagem" name="imagem" accept="image/*" required>
+      <button type="button" id="btnPreview">📍 Pré-visualizar no mapa</button>
+      <button type="submit">Enviar Intervenção</button>
+    </form>
+    {% else %}
+    <p style="background:#fde68a; padding:1rem; border-radius:8px;">⚠️ Você precisa <a href="/login/">fazer login</a> para registrar uma intervenção.</p>
+    {% endif %}
+    <div id="lista-intervencoes">
+  <button id="toggle-list" style="width:100%; cursor:pointer; background:#2563eb; color:white; border:none; border-radius:6px; padding:6px; font-weight:bold;">
+    📋 Intervenções Registradas ▾
+  </button>
+  <div id="intervencoes-content" style="display:block; margin-top:1rem;"></div>
+    </div>
+  </div>
+  <div id="map" style="flex:3; min-width:300px;">
+  </div>
+</div>
+<div id="lightbox" onclick="fecharImagem()">
+  <img src="" alt="Imagem ampliada">
+</div>
+
+<script>
+const apiURL = "http://localhost:8000/api/intervencoes/";
+const statusMessage = document.getElementById("status-message");
+
+// CSRF
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i=0;i<cookies.length;i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0,name.length+1) === (name+'=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length+1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// Ícones
+const icons = {
+  "MOBILIÁRIO URBANO": L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
+  "ESPAÇOS LIVRES DE ESTAR": L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
+  "FESTAS E EVENTOS": L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
+  "PAISAGISMO": L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
+  "FINALIDADE COMERCIAL": L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-violet.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
+  "INFRAESTRUTURA URBANA": L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]})
+};
+
+// Grupos e filtros
+let grupos = {}, categoriasAtivas = {};
+for(const cat in icons){ grupos[cat] = L.layerGroup(); categoriasAtivas[cat]=true; }
+
+// Marcador do clique do usuário
+let marker = null;
+const userClickIcon = L.icon({
+    iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+    shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png",
+    iconSize:[25,41],
+    iconAnchor:[12,41],
+    popupAnchor:[1,-34],
+    shadowSize:[41,41]
+});
+
+// Formulário
+const form = document.getElementById("formulario");
+if(form){
+form.addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  statusMessage.style.display="none"; 
+  statusMessage.textContent="";
+
+ 
+  const categoria = document.getElementById("categoria").value;
+  const descricao = document.getElementById("descricao").value;
+  const lat = parseFloat(document.getElementById("latitude").value);
+  const lon = parseFloat(document.getElementById("longitude").value);
+  const imagem = document.getElementById("imagem").files[0];
+  
+
+  if(isNaN(lat)||isNaN(lon)){ 
+    alert("Digite coordenadas válidas."); 
+    return; 
+  }
+
+  const formData = new FormData();
+  formData.append("categoria", categoria);   // 🔹 alterado
+  formData.append("descricao", descricao);
+  formData.append("latitude", lat);
+  formData.append("longitude", lon);
+  formData.append("imagem", imagem);
+
+  try{
+    const response = await fetch(apiURL,{
+      method:"POST",
+      body:formData,
+      headers:{"X-CSRFToken":csrftoken}
+    });
+
+    if(response.ok){
+      statusMessage.textContent="✅ Intervenção registrada com sucesso!";
+      statusMessage.style.backgroundColor="#d1e7dd";
+      statusMessage.style.color="#0f5132";
+      statusMessage.style.display="block";
+      form.reset();
+      carregarIntervencoes();
+      colocarMarcadoresNoMapa();
+    }else{
+      statusMessage.textContent="❌ Erro ao registrar intervenção.";
+      statusMessage.style.backgroundColor="#f8d7da";
+      statusMessage.style.color="#842029";
+      statusMessage.style.display="block";
+    }
+  }catch(err){
+    statusMessage.textContent="❌ Erro de rede. Verifique o servidor.";
+    statusMessage.style.backgroundColor="#f8d7da";
+    statusMessage.style.color="#842029";
+    statusMessage.style.display="block";
+  }
+
+  setTimeout(()=>{statusMessage.style.display="none";},5000);
+});
+}
+
+// Lista
+async function carregarIntervencoes(){
+  try{
+    const res = await fetch(apiURL);
+    const dados = await res.json();
+    const container = document.getElementById("intervencoes-content");
+    container.innerHTML = ""; // limpa conteúdo anterior
+
+    dados.forEach(item=>{
+      const categoria = item.categoria || "SEM CATEGORIA";
+      if(!categoriasAtivas[categoria]) return;
+      const div=document.createElement("div");
+      div.className="card";
+      let imagemURL = item.imagem;
+      if(imagemURL && !imagemURL.startsWith("http")) imagemURL = "http://localhost:8000"+imagemURL;
+      div.innerHTML=`
+        <strong>${item.categoria}</strong><br>
+        ${item.descricao}<br>
+        📍 ${item.latitude}, ${item.longitude}
+        ${imagemURL ? `<br><a href="${imagemURL}" target="_blank"><img src="${imagemURL}" class="intervencao-img"></a>` : ''}
+      `;
+      container.appendChild(div);
+    });
+  }catch(e){ console.error(e);}
+}
+
+document.getElementById("toggle-list").addEventListener("click", ()=>{
+  const content = document.getElementById("intervencoes-content");
+  content.style.display = content.style.display === "none" ? "block" : "none";
+});
+
+// Marcadores
+async function colocarMarcadoresNoMapa(){
+  try{
+    const res = await fetch(apiURL);
+    const dados = await res.json();
+    dados.forEach(item=>{
+      const categoria = item.categoria || "SEM CATEGORIA";
+      if(!grupos[categoria]){
+        grupos[categoria] = L.layerGroup();
+        categoriasAtivas[categoria] = true;
+      }
+      if(grupos[categoria].getLayers().some(m => m.getLatLng().lat === item.latitude && m.getLatLng().lng === item.longitude)) return;
+      const icone = icons[categoria] || icons["INFRAESTRUTURA URBANA"];
+      const m = L.marker([item.latitude,item.longitude],{icon:icone})
+                .bindPopup(`<strong>${item.categoria}</strong><br>${item.descricao}`);
+      grupos[categoria].addLayer(m);
+      if(categoriasAtivas[categoria] && !map.hasLayer(grupos[categoria])){
+        grupos[categoria].addTo(map);
+      }
+    });
+  }catch(e){ console.error(e);}
+}
+
+// Lightbox
+function abrirImagem(url){ document.getElementById("lightbox").querySelector("img").src=url; document.getElementById("lightbox").style.display="flex"; }
+function fecharImagem(){ document.getElementById("lightbox").style.display="none"; }
+
+// Mapa
+function initMap(){
+  map = L.map('map').setView([-20.7552,-42.8820],15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+
+  // Clique do usuário com ícone especial
+map.on('click', (e) => {
+    const lat = e.latlng.lat.toFixed(6);
+    const lng = e.latlng.lng.toFixed(6);
+    latitudeInput.value = lat;
+    longitudeInput.value = lng;
+    processLatLonFields(); 
+
+    if (marker) map.removeLayer(marker);
+
+    marker = L.marker([lat, lng], {icon: userClickIcon, draggable: true}).addTo(map);
+    marker.bindPopup("📍 Sua localização selecionada").openPopup();
+
+    // Atualiza input ao arrastar
+    marker.on('click', (e) => {
+    const lat = e.latlng.lat;
+    const lon = e.latlng.lng;
+    latitudeInput.value = lat.toFixed(6);
+    longitudeInput.value = lon.toFixed(6);
+    placeMarker(lat, lon);
+    });
+});
+
+  colocarMarcadoresNoMapa();
+  carregarIntervencoes();
+
+  for(const g in grupos){ grupos[g].addTo(map); }
+
+  const legend = L.control({position:"bottomright"});
+  legend.onAdd=function(){
+    const div = L.DomUtil.create("div","legend");
+    div.style.width="180px";
+    div.innerHTML = `
+      <button id="toggleLegend" style="width:100%;cursor:pointer;background:#2563eb;color:white;border:none;border-radius:6px;padding:4px;">Legenda ▾</button>
+      <div id="legendContent" style="display:none;margin-top:5px;">
+        ${Object.keys(icons).map(g => `<p><img src="${icons[g].options.iconUrl}"> ${g}</p>`).join('')}
+      </div>`;
+    return div;
+  };
+  legend.addTo(map);
+
+  document.addEventListener("click", function(e){
+    if(e.target && e.target.id==="toggleLegend"){
+      const content = document.getElementById("legendContent");
+      content.style.display = content.style.display === "none" ? "block" : "none";
+    }
+  });
+
+const filter = L.control({position:"topright"});
+
+filter.onAdd = function(){
+  const container = L.DomUtil.create("div"); 
+
+  // Botão para expandir/recolher
+  const toggleBtn = document.createElement("button");
+  toggleBtn.innerHTML = "🔎 Filtro";
+  toggleBtn.style.display = "block";
+  toggleBtn.style.width = "100%";
+  toggleBtn.style.marginBottom = "5px";
+  toggleBtn.style.cursor = "pointer";
+
+  // Caixa do filtro (colapsável)
+  const div = L.DomUtil.create("div","filter-box", container);
+  div.style.width="180px";
+  div.style.display="none"; // começa fechado
+  div.innerHTML="<h4>Filtrar</h4>";
+
+  // Percorre categorias (grupos)
+  for(const g in grupos){
+    const catDiv = document.createElement("div");
+    catDiv.style.marginBottom="8px";
+
+    const label = document.createElement("label");
+    label.style.display="block";
+    label.style.fontWeight="bold";
+    label.textContent = g;
+
+    const input = document.createElement("input");
+    input.type="checkbox";
+    input.checked = true;
+    input.style.display="block";
+    input.style.marginTop="4px";
+    input.onchange = function(){ toggleCategoria(g, this.checked); };
+
+    catDiv.appendChild(label);
+    catDiv.appendChild(input);
+    div.appendChild(catDiv);
+  }
+
+  // Toggle abre/fecha
+  toggleBtn.addEventListener("click", () => {
+    div.style.display = (div.style.display === "none") ? "block" : "none";
+  });
+
+  container.appendChild(toggleBtn);
+  container.appendChild(div);
+
+  return container;
+};
+
+filter.addTo(map);
+}
+
+function toggleCategoria(cat, visivel){
+  categoriasAtivas[cat] = visivel;
+  if(visivel){ 
+    grupos[cat].addTo(map); 
+  } else { 
+    map.removeLayer(grupos[cat]); 
+  }
+  carregarIntervencoes();
+}
+
+initMap();
+
+// ---------- Conversão DMS ↔ Decimal robusta ----------
+
+// Recebe deg, min, sec e hemisfério (string) → retorna decimal
+function dmsPartsToDecimal(deg, min = 0, sec = 0, hemi = "") {
+  const d = Number(deg) || 0;
+  const m = Number(min) || 0;
+  const s = Number(sec) || 0;
+  let dec = Math.abs(d) + m / 60 + s / 3600;
+  // se grau originalmente negativo (por sinal) ou hemisfério S/W/O => negativo
+  if (String(deg).trim().startsWith('-') || /[SWOsw o]/.test(hemi)) dec = -dec;
+  return dec;
+}
+
+// Tenta interpretar uma string como DMS (muito flexível)
+function parseDMS(str) {
+  if (!str || typeof str !== "string") return null;
+  let s = str.trim();
+
+  // normalizações simples
+  s = s.replace(/[,]/g, ' ');            // vírgulas → espaços
+  s = s.replace(/[°º]/g, ' ');           // graus símbolos → espaço
+  s = s.replace(/[’‘`′’]/g, "'");        // aspas simples variantes → '
+  s = s.replace(/[“”]/g, '"');           // aspas duplas variantes → "
+  s = s.replace(/[^\dA-Za-z\.\-\s'"]/g, ' '); // remove símbolos estranhos (mantém ., -, letras, aspas)
+  s = s.replace(/\s+/g, ' ').trim();     // colapsa espaços
+
+  // 1) Se já é um decimal simples (pode conter sinal e ponto)
+  const decOnly = s.match(/^([+-]?\d+(?:\.\d+)?)$/);
+  if (decOnly) return parseFloat(decOnly[1]);
+
+  // 2) padrão comum: [hemisphere]? deg [min [sec]] [hemisphere]? (ex: S 20 45 18  OR 20 45 18 S)
+  // Vamos capturar: optional hemi before, then deg, optional min, optional sec, optional hemi after
+  const dmsRegex = /^\s*([NSEWnsew])?\s*([+-]?\d+(?:\.\d+)?)\s*(\d+(?:\.\d+)?)?\s*(\d+(?:\.\d+)?)?\s*([NSEWnsew])?\s*$/;
+  let m = s.match(dmsRegex);
+  if (m) {
+    const hemi = (m[1] || m[5] || '').toUpperCase();
+    const deg = m[2];
+    const min = m[3] || 0;
+    const sec = m[4] || 0;
+    return dmsPartsToDecimal(deg, min, sec, hemi);
+  }
+
+  // 3) Caso com símbolos de minutos (') ou segundos (") presentes numa ordem qualquer
+  // Ex: 20'30.5" S  OR 20 30'  OR 20 30 30
+  const parts = s.split(' ');
+  // tenta extrair números e possíveis hemisférios
+  let hemiBefore = null, hemiAfter = null;
+  if (parts.length && /^[NSEWnsew]$/.test(parts[0])) { hemiBefore = parts.shift().toUpperCase(); }
+  if (parts.length && /^[NSEWnsew]$/.test(parts[parts.length-1])) { hemiAfter = parts.pop().toUpperCase(); }
+
+  // agora restam só números (1 a 3) — se tiver mais, consideramos apenas os 3 primeiros
+  const nums = parts.filter(p => /[0-9.\-]/.test(p)).slice(0,3);
+  if (nums.length >= 1) {
+    const deg = nums[0];
+    const min = nums[1] || 0;
+    const sec = nums[2] || 0;
+    const hemi = (hemiBefore || hemiAfter || '');
+    return dmsPartsToDecimal(deg, min, sec, hemi);
+  }
+
+  // 4) fallback: tenta extrair o primeiro número decimal que aparecer
+  const fallback = s.match(/([+-]?\d+(?:\.\d+)?)/);
+  if (fallback) return parseFloat(fallback[1]);
+
+  return null;
+}
+
+// ---------- Validação ----------
+function isValidLat(lat) {
+  return typeof lat === "number" && !isNaN(lat) && lat >= -90 && lat <= 90;
+}
+function isValidLon(lon) {
+  return typeof lon === "number" && !isNaN(lon) && lon >= -180 && lon <= 180;
+}
+
+// ---------- UI: marcar borda verde/vermelha ----------
+function setFieldValid(input, valid) {
+  if (!input) return;
+  input.style.outline = valid ? "2px solid #28a745" : "2px solid #e53935";
+  // opcional: sombra sutil
+  input.style.boxShadow = valid ? "0 0 6px rgba(40,167,69,0.18)" : "0 0 6px rgba(229,57,53,0.18)";
+}
+
+// ---------- Gerenciamento do marcador no mapa ----------
+
+function placeMarker(lat, lon) {
+  if (!isValidLat(lat) || !isValidLon(lon)) return;
+
+  if (marker) {
+    map.removeLayer(marker);
+  }
+
+  marker = L.marker([lat, lon], { draggable: true, icon: userClickIcon }).addTo(map);
+  marker.bindPopup(`📍 ${lat.toFixed(6)}, ${lon.toFixed(6)}`).openPopup();
+  map.setView([lat, lon], 17);
+
+  marker.on('dragend', function(ev) {
+    const pos = ev.target.getLatLng();
+    latitudeInput.value = pos.lat.toFixed(6);
+    longitudeInput.value = pos.lng.toFixed(6);
+    setFieldValid(latitudeInput, isValidLat(pos.lat));
+    setFieldValid(longitudeInput, isValidLon(pos.lng));
+  });
+}
+
+// ---------- Função central: processa inputs LAT e LON (conversão e validação) ----------
+function processLatLonFields() {
+  if (!latitudeInput || !longitudeInput) return;
+
+  // converte cada campo (aceita DMS ou decimal)
+  const parsedLat = parseDMS(latitudeInput.value);
+  const parsedLon = parseDMS(longitudeInput.value);
+
+  const latOk = isValidLat(parsedLat);
+  const lonOk = isValidLon(parsedLon);
+
+  // atualiza estilos
+  setFieldValid(latitudeInput, latOk);
+  setFieldValid(longitudeInput, lonOk);
+
+  // se ambos válidos, atualiza os campos para decimal padronizado e plota marcador
+  if (latOk && lonOk) {
+    latitudeInput.value = parsedLat.toFixed(6);
+    longitudeInput.value = parsedLon.toFixed(6);
+    placeMarker(parsedLat, parsedLon);
+  }
+}
+
+// ---------- Helper para ligar eventos (digitar/colar/sair do campo) ----------
+function attachAutoConvert(inputElement) {
+  if (!inputElement) return;
+  // events: input -> dá feedback contínuo (mas não força conversão final),
+  // blur / paste -> tenta converter
+  inputElement.addEventListener('input', () => {
+    // tenta interpretar parcialmente para aplicar validação visual em tempo real
+    const p = parseDMS(inputElement.value);
+    if (inputElement === latitudeInput) setFieldValid(inputElement, isValidLat(p));
+    else setFieldValid(inputElement, isValidLon(p));
+  });
+
+  inputElement.addEventListener('blur', processLatLonFields);
+  inputElement.addEventListener('paste', () => setTimeout(processLatLonFields, 80));
+  inputElement.addEventListener('change', processLatLonFields);
+}
+
+// ---------- Seleciona campos e inicializa ----------
+const latitudeInput = document.getElementById('latitude');
+const longitudeInput = document.getElementById('longitude');
+
+attachAutoConvert(latitudeInput);
+attachAutoConvert(longitudeInput);
+
+// opcional: processa no carregamento caso já haja valores
+window.addEventListener('load', () => {
+  setTimeout(processLatLonFields, 150);
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+web: gunicorn plataforma_geo.wsgi

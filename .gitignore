@@ -1,0 +1,17 @@
+# Ambiente virtual
+venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# Media (imagens enviadas pelos usuários)
+media/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db

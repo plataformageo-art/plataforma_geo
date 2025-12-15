@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>📊 Análise de Intervenções</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* Reset básico e estilos gerais */
+body { font-family:sans-serif; margin:0; padding:0; background:#f8fafc; }
+nav { background-color: #1d4ed8; padding: 10px; color: white; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 2rem; flex-wrap: wrap; }
+nav a { color: green; text-decoration: none; }
+nav .caixinha { display: flex; justify-content: center; align-items: center; padding: 8px; border: 3px solid #000; border-radius: 8px; background-color: #fff; font-weight: bold; cursor: pointer; }
+h1 { text-align: center; margin-bottom: 1rem; }
+
+/* Gráficos lado a lado */
+#charts { display:flex; flex-wrap:wrap; justify-content:center; gap:2rem; margin-bottom:2rem; }
+.chart-container { width:500px; height:400px; background:white; padding:1rem; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.chart-container canvas { width: 100% !important; height: 100% !important; }
+
+/* Cards de resumo */
+.summary-cards { display:flex; flex-wrap:wrap; justify-content:center; gap:2rem; margin-top:1rem; }
+.card-summary { background:white; padding:1rem 1.5rem; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); width:300px; text-align:center; font-size:1.1rem; }
+
+/* Mapa */
+#map { width:100%; height:60vh; margin-top:3rem; border-radius:10px; }
+</style>
+</head>
+<body>
+
+<header>
+<nav>
+  <div style="font-weight:bold; font-size:1.2rem;">🗺️ Plataforma Geo</div>
+  <div style="display:flex; gap:1rem;">
+    <a href="/"><div class="caixinha">🏠 Início</div></a>
+    <a href="login"><div class="caixinha">🔐 Login</div></a>
+    <a href="accounts/signup"><div class="caixinha">📝 Cadastro</div></a>
+    <a href="/accounts/google/login/"><div class="caixinha">🔗 Entrar com Google</div></a>
+    {% if user.is_authenticated %}
+      <p> Olá, {{ user.username }}! 
+      <form action="{% url 'logout' %}" method="post" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="caixinha" style="color:red;border-color:red;background-color:#fff;">Sair</button>
+      </form>
+    {% endif %}
+  </div>
+</nav>
+</header>
+
+<main>
+  <h1>📊 Análise das Intervenções</h1>
+
+  <!-- Gráficos lado a lado -->
+  <div id="charts">
+    <div class="chart-container">
+      <canvas id="categoriaChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <canvas id="tempoChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Cards de resumo -->
+  <div class="summary-cards">
+    <div class="card-summary" id="categoriaSummary">Resumo de categorias</div>
+    <div class="card-summary" id="tempoSummary">Resumo temporal</div>
+  </div>
+
+  <!-- Mapa -->
+  <div id="map"></div>
+</main>
+
+<script>
+const apiURL = "http://localhost:8000/api/intervencoes/";
+
+const icons = {
+  "MOBILIÁRIO URBANO": {icon: L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41]}), color:'rgba(0,0,0,0.7)'},
+  "ESPAÇOS LIVRES DE ESTAR": {icon: L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41]}), color:'rgba(0,128,0,0.7)'},
+  "FESTAS E EVENTOS": {icon: L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41]}), color:'rgba(255,0,0,0.7)'},
+  "PAISAGISMO": {icon: L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41]}), color:'rgba(255,165,0,0.7)'},
+  "FINALIDADE COMERCIAL": {icon: L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-violet.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41]}), color:'rgba(238,130,238,0.7)'},
+  "INFRAESTRUTURA URBANA": {icon: L.icon({iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png", shadowUrl:"https://unpkg.com/leaflet/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41]}), color:'rgba(255,255,0,0.7)'}
+};
+
+let map = L.map('map').setView([-20.7552,-42.8820],15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+
+let grupos = {};
+for(const cat in icons){ grupos[cat] = L.layerGroup().addTo(map); }
+
+async function carregarDados() {
+  try{
+    const res = await fetch(apiURL);
+    const dados = await res.json();
+
+    for(const g in grupos){ grupos[g].clearLayers(); }
+
+    const contagemCategorias = {};
+    const contagemTempo = {};
+
+    dados.forEach(item => {
+      const cat = item.categoria || "SEM CATEGORIA";
+      const icone = icons[cat]?.icon || icons["INFRAESTRUTURA URBANA"].icon;
+
+      if(item.latitude && item.longitude){
+        const m = L.marker([item.latitude, item.longitude], {icon: icone})
+          .bindPopup(`<strong>${cat}</strong><br>${item.descricao}<br>📅 ${item.data_registro.split('T')[0] || ''}`);
+        grupos[cat].addLayer(m);
+      }
+
+      contagemCategorias[cat] = (contagemCategorias[cat] || 0) + 1;
+
+      if(item.data_registro){
+        const data = item.data_registro.split('T')[0]
+        contagemTempo[data] = (contagemTempo[data] || 0) + 1;
+      }
+    });
+
+    atualizarGraficos(contagemCategorias, contagemTempo);
+
+  }catch(e){ console.error(e); }
+}
+
+let categoriaChart, tempoChart;
+function atualizarGraficos(categorias, tempo){
+  // Gráfico de categorias
+  const ctx1 = document.getElementById('categoriaChart').getContext('2d');
+  if(categoriaChart) categoriaChart.destroy();
+  categoriaChart = new Chart(ctx1, {
+    type:'bar',
+    data:{
+      labels:Object.keys(categorias),
+      datasets:[{
+        label:'Quantidade',
+        data:Object.values(categorias),
+        backgroundColor: Object.keys(categorias).map(cat => icons[cat]?.color || 'rgba(0,0,0,0.7)')
+      }]
+    },
+    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  // resumo categorias
+  const totalCategorias = Object.values(categorias).reduce((a,b)=>a+b,0);
+  document.getElementById('categoriaSummary').innerHTML = 
+    `Total de intervenções: <strong>${totalCategorias}</strong><br>` +
+    Object.keys(categorias).map(cat => `${cat}: <strong>${categorias[cat]}</strong>`).join('<br>');
+
+  // Gráfico temporal
+  const ctx2 = document.getElementById('tempoChart').getContext('2d');
+  if(tempoChart) tempoChart.destroy();
+  const datasOrdenadas = Object.keys(tempo).sort((a,b)=>new Date(a)-new Date(b));
+
+  tempoChart = new Chart(ctx2, {
+    type:'line',
+    data:{
+      labels: datasOrdenadas,
+      datasets:[{
+        label:'Intervenções por dia',
+        data: datasOrdenadas.map(d=>tempo[d]),
+        borderColor:'rgba(75,192,192,1)',
+        backgroundColor:'rgba(75,192,192,0.2)',
+        fill:true,
+        tension:0.3
+      }]
+    },
+    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}},}
+  });
+
+  // resumo tempo
+  if(datasOrdenadas.length > 0){
+    document.getElementById('tempoSummary').innerHTML = 
+      `O gráfico mostra a evolução diária das intervenções.<br>` +
+      `Dia com mais registros: <strong>${datasOrdenadas.reduce((a,b)=>tempo[a]>tempo[b]?a:b)}</strong> com <strong>${Math.max(...Object.values(tempo))}</strong> intervenções.`;
+  } else {
+    document.getElementById('tempoSummary').innerHTML = 'Ainda não há registros suficientes para análise diária.';
+  }
+}
+
+carregarDados();
+setInterval(carregarDados, 5000);
+</script>
+
+</body>
+</html>
