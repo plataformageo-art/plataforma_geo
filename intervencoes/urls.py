@@ -7,7 +7,6 @@ from .views import api_intervencoes
 from django.urls import reverse_lazy
 
 router = DefaultRouter()
-router.register(r'intervencoes', views.IntervencaoViewSet)
 router.register(r'comentarios', views.ComentarioViewSet)
 router.register(r'intervencoes', IntervencaoViewSet, basename='intervencoes')
 

@@ -24,8 +24,9 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    ".railway.app"
+    ".onrender.com",
 ]
+
 
 # Application definition
 INSTALLED_APPS = [
@@ -46,6 +47,9 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 SITE_ID = 1
@@ -157,4 +161,4 @@ EMAIL_HOST_PASSWORD = 'qrvp pzzx msri ojzw'          # senha de app gerada
 DEFAULT_FROM_EMAIL = 'Plataforma Geo <no-reply.plataformageo@gmail.com>'
 EMAIL_SUBJECT_PREFIX = '[Plataforma Geo] '
 SERVER_EMAIL = 'no-reply@plataformageo.com'
-DOMAIN_NAME = 'localhost:8000'
+DOMAIN_NAME = os.getenv("DOMAIN_NAME", "plataforma-geo.onrender.com")
