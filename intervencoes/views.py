@@ -41,8 +41,12 @@ def pagina_cadastro(request):
         elif User.objects.filter(email=email).exists():
             messages.error(request, 'E-mail já cadastrado.')
         else:
-            user = User.objects.create_user(username=nome, email=email, password=senha)
-            user.save()
+            try:
+                user = User.objects.create_user(username=nome, email=email, password=senha)
+                user.save()
+            except Exception as e:
+                print(f"[ERROR] Erro na criacao de usuario: {e}")
+                return 
 
             # Faz login automático
             user_autenticado = authenticate(username=nome, password=senha)

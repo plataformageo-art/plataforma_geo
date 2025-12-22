@@ -165,3 +165,4 @@ DEFAULT_FROM_EMAIL = 'Plataforma Geo <no-reply.plataformageo@gmail.com>'
 EMAIL_SUBJECT_PREFIX = '[Plataforma Geo] '
 SERVER_EMAIL = 'no-reply@plataformageo.com'
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "plataforma-geo.onrender.com")
+
