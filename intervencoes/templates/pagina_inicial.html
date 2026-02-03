@@ -440,7 +440,9 @@ async function carregarIntervencoes(){
       const div=document.createElement("div");
       div.className="card";
       let imagemURL = item.imagem;
-      if(imagemURL && !imagemURL.startsWith("http")) imagemURL = "http://localhost:8000"+imagemURL;
+      if (imagemURL && !imagemURL.startsWith("http")) {
+    imagemURL = window.location.origin + imagemURL;
+          }
       div.innerHTML=`
         <strong>${item.categoria}</strong><br>
         ${item.descricao}<br>
