@@ -13,15 +13,15 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
+SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = True
-SECRET_KEY = 'django-insecure-dev-key-local'
-
 
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    ".onrender.com",
+    "plataforma-geo.onrender.com",
 ]
+
 
 
 # Application definition
@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'cloudinary_storage',
 ]
 
-SITE_ID = 1
+SITE_ID = 2
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
@@ -107,14 +107,13 @@ WSGI_APPLICATION = 'plataforma_geo.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'intervencoes_db',      # nome do banco no pgAdmin
-        'USER': 'postgres',            # seu usuário
-        'PASSWORD': 'rudolf25994',       # sua senha
+        'NAME': 'plataforma_geo',
+        'USER': 'plataforma_user',
+        'PASSWORD': '123456',
         'HOST': 'localhost',
         'PORT': '5432',
     }
 }
-
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
